@@ -11,5 +11,13 @@ class Product(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def __str__(self):
         return self.product_name
+    
+class Comment(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="comments")
+    commenter = models.ForeignKey(User, on_delete=models.CASCADE, related_name="comments")
+    comment = models.TextField(blank=True, null=True)
+    date = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return self.comment  
 
     

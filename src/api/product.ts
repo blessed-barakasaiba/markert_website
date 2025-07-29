@@ -10,7 +10,13 @@ export const uploadproduct = async (data: ProductUploadData) =>API.post('post_pr
     headers:{
         'Authorization':`Token ${localStorage.getItem('token')}`,
     }
-})
+});
 
 export const product = async ()=> await API.get("products/");
+
+export const addComment = async (data:{comment:string; product:string}) =>API.post("addcomment/", data,{
+    headers:{
+        'Authorization':`Token ${localStorage.getItem('token')}`,
+    }
+})
 

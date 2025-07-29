@@ -74,6 +74,36 @@ class ProductView(APIView):
             return Response({"success":"Product deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
         else:
             return Response({"Permission denied":""}, status=status.HTTP_403_FORBIDDEN)
+
+
+class CommentView(APIView):
+    def post(self, request):
+        data = request.data
+        print(data)
+        if not request.user.is_authenticated:
+            return Response({"error":"Authentication required"}, status=status.HTTP_403_FORBIDDEN)
+        product_id = data.get('product')
+        if not product_id:
+            return Response({"error":"Product Id required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({"error": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        comment_data ={
+            'comment':data.get('comment'),
+            'product': product_id,
+            'commenter': request.user.id
+        }    
+            
+        serializer = CommentSerializer(data=comment_data) 
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"success":"Comment added successfully", 'comment':serializer.data}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
+        
+        
+               
             
         
      
