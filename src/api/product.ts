@@ -18,5 +18,14 @@ export const addComment = async (data:{comment:string; product:string}) =>API.po
     headers:{
         'Authorization':`Token ${localStorage.getItem('token')}`,
     }
+});
+
+export const fetchComment = async (pk)=> await API.get(`fetchcomment/${pk}/`);
+
+export const like = async (data:{like:boolean}) => await API.post('like/', data, {
+    headers:{
+        'Authorization':`Token ${localStorage.getItem('token')}`,
+    }
 })
+
 

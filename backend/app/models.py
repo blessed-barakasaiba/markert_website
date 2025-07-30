@@ -20,4 +20,9 @@ class Comment(models.Model):
     def __str__(self):
         return self.comment  
 
-    
+# class Like(models.Model):
+#     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="products")
+#     liker = models.ForeignKey(User, on_delete=models.CASCADE, related_name="products")
+#     like = models.BooleanField(default=False)
+#     def __str__(self):
+#         return super.like

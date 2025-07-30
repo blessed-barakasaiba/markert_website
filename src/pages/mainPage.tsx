@@ -1,21 +1,34 @@
 import { useEffect, useState } from "react";
-import { addComment, product } from "../api/product";
+import { addComment, fetchComment, like, product } from "../api/product";
 import { Link, useNavigate } from "react-router-dom";
 import { logout } from "../api/auth";
-import { ShoppingCart, Upload, LogOut, MessageCircle, Plus, Minus, X, Heart } from "lucide-react";
+import { ShoppingCart, Upload, LogOut, MessageCircle, Plus, X, Heart } from "lucide-react";
+import LoginModal from "./Log";
 
 const MainPage = () => {
   const [products, setProducts] = useState([]);
-  const [isLoading, setisLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const [cart, setcart] = useState([]);
+  const [showLogin, setShowLogin] = useState(false);
+  const [cart, setCart] = useState(() => {
+    // Initialize cart from localStorage on component mount
+    try {
+      const savedCart = localStorage.getItem("cart");
+      return savedCart ? JSON.parse(savedCart) : [];
+    } catch (error) {
+      console.error("Error loading cart from localStorage:", error);
+      return [];
+    }
+  });
   const totalPrice = cart.reduce((acc, item) => acc + Number(item.price), 0);
   const [comments, setComments] = useState({});
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [favorites, setFavorites] = useState(new Set());
+ const [displayComment, setDisplayComment] = useState<Record<number, Comment[]>>({});
+  const [isFetchingComments, setIsFetchingComments] = useState(false);
 
   useEffect(() => {
-    setisLoading(true);
+    setIsLoading(true);
     const fetchProducts = async () => {
       try {
         const response = await product();
@@ -23,11 +36,43 @@ const MainPage = () => {
       } catch (e) {
         console.error(e);
       } finally {
-        setisLoading(false);
+        setIsLoading(false);
       }
     };
     fetchProducts();
   }, []);
+
+
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (products.length === 0) return;
+      
+      setIsFetchingComments(true);
+      const commentsData: Record<number, Comment[]> = {};
+      
+      try {
+        for (const product of products) {
+          try {
+            const response = await fetchComment(product.id);
+            // Ensure we're using response.data.data if your API wraps the array in a data property
+            commentsData[product.id] = response.data.data || [];
+          } catch (e) {
+            console.error(`Error fetching comments for product ${product.id}:`, e);
+            commentsData[product.id] = [];
+          }
+        }
+        setDisplayComment(commentsData);
+      } catch (e) {
+        console.error("Error fetching comments:", e);
+      } finally {
+        setIsFetchingComments(false);
+      }
+    };
+
+    fetchComments();
+  }, [products]);
+
+
 
   const sendComment = async (productId) => {
     const comment = comments[productId];
@@ -37,17 +82,23 @@ const MainPage = () => {
     }
     try {
       const res = await addComment({ comment: comment, product: productId });
-      console.log(res.data);
       setComments((prev) => ({ ...prev, [productId]: "" }));
-      alert("Comment added successfully!");
+      // Refresh comments after adding a new one
+      const response = await fetchComment(productId);
+      setDisplayComment(prev => ({
+        ...prev,
+        [productId]: response.data
+      }));
     } catch (e) {
       console.error(e);
       alert("Failed to add comment");
     }
   };
 
-  const addTocart = (product) => {
-    setcart((prevCart) => {
+
+
+  const addToCart = (product) => {
+    setCart((prevCart) => {
       const exists = prevCart.some((p) => p.id === product.id);
       if (exists) return prevCart;
       return [...prevCart, product];
@@ -55,7 +106,7 @@ const MainPage = () => {
   };
 
   const removeFromCart = (id) => {
-    setcart((prevCart) => prevCart.filter((item) => item.id !== id));
+    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
   };
 
   const toggleFavorite = (productId) => {
@@ -80,15 +131,13 @@ const MainPage = () => {
     }
   };
 
+  // Save cart to localStorage whenever cart changes
   useEffect(() => {
-    const savedCart = localStorage.getItem("cart");
-    if (savedCart) {
-      setcart(JSON.parse(savedCart));
+    try {
+      localStorage.setItem("cart", JSON.stringify(cart));
+    } catch (error) {
+      console.error("Error saving cart to localStorage:", error);
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
   const handleCommentChange = (productId, value) => {
@@ -105,6 +154,14 @@ const MainPage = () => {
         <div className="h-10 bg-gray-200 rounded mb-3"></div>
         <div className="h-10 bg-gray-200 rounded"></div>
       </div>
+    </div>
+  );
+
+  // Comment skeleton component
+  const CommentSkeleton = () => (
+    <div className="space-y-2">
+      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+      <div className="h-4 bg-gray-200 rounded w-1/2"></div>
     </div>
   );
 
@@ -201,6 +258,23 @@ const MainPage = () => {
 
                     {/* Comment Section */}
                     <div className="mb-4">
+                      <div className="max-h-32 overflow-y-auto mb-2 space-y-2">
+      {isFetchingComments ? (
+        <div className="text-sm text-gray-400 italic">Loading comments...</div>
+      ) : displayComment[product.id]?.length > 0 ? (
+        displayComment[product.id].map((comment) => (
+          <div key={comment.id} className="text-sm text-gray-600 p-2 bg-gray-50 rounded">
+            <p className="font-medium">User #{comment.commenter}</p>
+            <p>{comment.comment}</p>
+            <p className="text-xs text-gray-400">
+              {new Date(comment.date).toLocaleString()}
+            </p>
+          </div>
+        ))
+      ) : (
+        <p className="text-sm text-gray-400 italic">No comments yet</p>
+      )}
+    </div>
                       <div className="flex items-center mb-2">
                         <MessageCircle size={16} className="text-gray-500 mr-2" />
                         <span className="text-sm text-gray-600">Add a comment</span>
@@ -227,7 +301,7 @@ const MainPage = () => {
 
                     {/* Add to Cart Button */}
                     <button
-                      onClick={() => addTocart(product)}
+                      onClick={() => addToCart(product)}
                       className="w-full py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 font-semibold shadow-md hover:shadow-lg transform hover:scale-105 flex items-center justify-center space-x-2"
                     >
                       <Plus size={20} />
@@ -341,6 +415,18 @@ const MainPage = () => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Login Modal */}
+      <div className="h-screen flex items-center justify-center bg-gray-100">
+        <button
+          onClick={() => setShowLogin(true)}
+          className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-md"
+        >
+          Open Login Popup
+        </button>
+
+        <LoginModal show={showLogin} onClose={() => setShowLogin(false)} />
       </div>
 
       {/* Backdrop for cart */}

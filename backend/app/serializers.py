@@ -11,6 +11,10 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = "__all__"
+# class LikeSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Like
+#         fields = "__all__"        
 
 class ProductSerializer(serializers.ModelSerializer):
     uploader = serializers.PrimaryKeyRelatedField(read_only=True)

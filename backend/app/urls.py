@@ -10,5 +10,7 @@ urlpatterns = [
     path("post_products/", ProductView.as_view(),),
     path("update_products/<str:uploader>/<int:pk>/", ProductView.as_view(),),
     path("delete_products/<str:uploader>/<int:pk>/", ProductView.as_view(),),
-    path("addcomment/", CommentView.as_view(),)
+    path("addcomment/", CommentView.as_view(),),
+    # path("like/", LikeView.as_view(),),
+    path("fetchcomment/<int:pk>/", CommentView.as_view(),),
 ]
